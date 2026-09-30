@@ -1,0 +1,124 @@
+--- a/litellm/responses/litellm_completion_transformation/transformation.py
++++ b/litellm/responses/litellm_completion_transformation/transformation.py
+@@ -488,5 +488,24 @@
+                         )
+                     continue
++                # Codex can replay a tool response with an empty assistant
++                # output_text item between the function_call and its output.
++                # It is a semantic no-op, and Kimi's Chat API rejects it.
++                if (
++                    isinstance(_input, dict)
++                    and _input.get("type") == "message"
++                    and _input.get("role") == "assistant"
++                ):
++                    replay_content = _input.get("content")
++                    if replay_content in (None, "", []) or (
++                        isinstance(replay_content, list)
++                        and all(
++                            isinstance(part, dict)
++                            and part.get("type") in ("output_text", "text")
++                            and not part.get("text")
++                            for part in replay_content
++                        )
++                    ):
++                        continue
+                 chat_completion_messages = (
+                     LiteLLMCompletionResponsesConfig._transform_responses_api_input_item_to_chat_completion_message(
+                         input_item=_input
+@@ -2178,6 +2197,13 @@
+     ) -> list[GenericResponseOutputItem | OutputImageGenerationCall]:
+         message_output_items: Final[list[GenericResponseOutputItem | OutputImageGenerationCall]] = []
+         for choice in choices:
++            # A tool-only Chat response has no assistant text item. Emitting
++            # one with empty content makes Codex replay a provider-invalid
++            # no-op on the next turn.
++            if not getattr(choice.message, "content", None) and getattr(
++                choice.message, "tool_calls", None
++            ):
++                continue
+             # Check if message has images (image generation)
+             if hasattr(choice.message, "images") and choice.message.images:
+                 # Extract image generation output
+--- a/litellm/responses/litellm_completion_transformation/streaming_iterator.py
++++ b/litellm/responses/litellm_completion_transformation/streaming_iterator.py
+@@ -103,6 +103,7 @@
+         self._reasoning_active = False
+         self._reasoning_done_emitted = False
+         self._reasoning_item_id: str | None = None
++        self._post_reasoning_message_started = False
+         self._accumulated_reasoning_content_parts: list[str] = []
+         self._accumulated_provider_specific_fields: dict[str, Any] = {}
+         self._custom_tool_names: set[str] = extract_custom_tool_names(self.responses_api_request.get("tools"))
+@@ -712,6 +712,17 @@
+             if self._pending_tool_events:
+                 return self._pending_tool_events.pop(0)
+ 
++            # Do not synthesize an empty assistant message after a tool-only
++            # completion. The function_call is the complete assistant turn.
++            if isinstance(self.litellm_model_response, ModelResponse):
++                completed_message = self.litellm_model_response.choices[0].message
++                if getattr(completed_message, "tool_calls", None) and not getattr(
++                    completed_message, "content", None
++                ):
++                    self.sent_output_text_done_event = True
++                    self.sent_output_content_part_done_event = True
++                    self.sent_output_item_done_event = True
++
+             done_event: Final = self.return_default_done_events(self.litellm_model_response)
+             if done_event:
+                 return done_event
+@@ -741,6 +752,19 @@
+             return
+         delta: Final = chunk.choices[0].delta
+ 
++        # Most Chat streams begin with a role-only delta. Delay creation of a
++        # Responses output item until the first reasoning, tool, or text delta;
++        # otherwise reasoning starts under an empty message item and is never
++        # completed/replayed by Codex.
++        has_reasoning = bool(
++            getattr(delta, "reasoning_content", None)
++            or getattr(delta, "thinking_blocks", None)
++        )
++        has_tool = bool(getattr(delta, "tool_calls", None) or getattr(delta, "function_call", None))
++        has_text = bool(getattr(delta, "content", None))
++        if not (has_reasoning or has_tool or has_text):
++            return
++
+         self._sequence_number += 1
+         self.sent_output_item_added_event = True
+ 
+@@ -885,6 +909,33 @@
+                                 )
+                                 self._reasoning_done_emitted = True
+                                 self._reasoning_active = False
+-
++                                if (
++                                    delta
++                                    and getattr(delta, "content", None)
++                                    and not self._post_reasoning_message_started
++                                ):
++                                    self._cached_item_id = self._cached_item_id or f"msg_{uuid.uuid4()}"
++                                    self._sequence_number += 1
++                                    message_added_event = OutputItemAddedEvent(
++                                        type=ResponsesAPIStreamEvents.OUTPUT_ITEM_ADDED,
++                                        output_index=0,
++                                        item=BaseLiteLLMOpenAIResponseObject(
++                                            **{
++                                                "id": self._cached_item_id,
++                                                "type": "message",
++                                                "role": "assistant",
++                                                "status": "in_progress",
++                                                "content": [],
++                                            }
++                                        ),
++                                    )
++                                    message_added_event.__dict__["sequence_number"] = self._sequence_number
++                                    self._pending_response_events.append(message_added_event)
++                                    if not self.sent_content_part_added_event:
++                                        self.sent_content_part_added_event = True
++                                        self._pending_response_events.append(
++                                            self.create_content_part_added_event()
++                                        )
++                                    self._post_reasoning_message_started = True
+                         response_api_chunk = self._transform_chat_completion_chunk_to_response_api_chunk(chunk)
+                         if response_api_chunk:

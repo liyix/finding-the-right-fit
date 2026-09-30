@@ -1,0 +1,59 @@
+--- a/litellm/responses/litellm_completion_transformation/transformation.py
++++ b/litellm/responses/litellm_completion_transformation/transformation.py
+@@ -461,11 +461,56 @@
+             messages.append(ChatCompletionUserMessage(role="user", content=input))
+         elif isinstance(input, list):
+             existing_tool_call_ids: Final[set[str]] = set()
++            # Chat reasoning models such as Kimi K3 require the complete
++            # assistant reasoning_content to be replayed beside tool_calls.
++            # The Chat->Responses stream bridge represents that text as the
++            # immediately preceding reasoning item's summary, so carry it
++            # forward to the assistant message reconstructed below.
++            pending_reasoning_content = ""
+             for _input in input:
++                if isinstance(_input, dict) and _input.get("type") == "reasoning":
++                    reasoning_parts: list[str] = []
++                    summary = _input.get("summary")
++                    if isinstance(summary, list):
++                        for part in summary:
++                            if isinstance(part, dict):
++                                text = part.get("text")
++                                if isinstance(text, str) and text:
++                                    reasoning_parts.append(text)
++                    content = _input.get("content")
++                    if not reasoning_parts and isinstance(content, list):
++                        for part in content:
++                            if isinstance(part, dict):
++                                text = part.get("text")
++                                if isinstance(text, str) and text:
++                                    reasoning_parts.append(text)
++                    if reasoning_parts:
++                        pending_reasoning_content = "\n".join(
++                            part
++                            for part in (pending_reasoning_content, *reasoning_parts)
++                            if part
++                        )
++                    continue
+                 chat_completion_messages = (
+                     LiteLLMCompletionResponsesConfig._transform_responses_api_input_item_to_chat_completion_message(
+                         input_item=_input
+                     )
+                 )
++                if pending_reasoning_content:
++                    for message in chat_completion_messages:
++                        role = message.get("role") if isinstance(message, dict) else getattr(message, "role", None)
++                        if role != "assistant":
++                            continue
++                        if isinstance(message, dict):
++                            existing = message.get("reasoning_content")
++                            message["reasoning_content"] = "\n".join(
++                                part
++                                for part in (str(existing or ""), pending_reasoning_content)
++                                if part
++                            )
++                        else:
++                            setattr(message, "reasoning_content", pending_reasoning_content)
++                        pending_reasoning_content = ""
++                        break
+ 
+                 if LiteLLMCompletionResponsesConfig._is_input_item_function_call(input_item=_input):

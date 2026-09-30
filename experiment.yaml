@@ -1,0 +1,1296 @@
+project: harness-model-eval
+
+campaign:
+  kind: pilot
+  provider: openrouter-strict
+  provider_policy: openrouter-first-no-silent-direct-fallback
+  repetitions: 1
+  status: draft
+
+models:
+  - id: claude-opus-5
+    family: anthropic
+    released_on: "2026-07-24"
+    availability: strict-openrouter-terminal-qualified
+    openrouter:
+      model_id: anthropic/claude-opus-5
+      provider_only: [anthropic]
+      endpoint_context_tokens: 1000000
+      endpoint_max_output_tokens: 128000
+      pi_catalog_max_output_tokens: 128000
+      supports_vision: true
+      openhands_capability_overrides:
+        supports_vision: true
+  - id: gpt-6-astra
+    family: openai
+    released_on: "2026-07-09"
+    preview_released_on: "2026-06-26"
+    availability: strict-openrouter-terminal-qualified
+    openrouter:
+      model_id: openai/gpt-6-astra
+      provider_only: [openai]
+      endpoint_context_tokens: 1050000
+      endpoint_max_output_tokens: 128000
+      pi_catalog_max_output_tokens: 128000
+      supports_vision: true
+      openhands_capability_overrides:
+        supports_vision: true
+  - id: kimi-k3
+    family: moonshot
+    released_on: "2026-07-16"
+    availability: strict-openrouter-terminal-qualified
+    openrouter:
+      model_id: moonshotai/kimi-k3
+      provider_only: [moonshotai/mxfp4]
+      quantizations: [mxfp4]
+      endpoint_context_tokens: 1048576
+      endpoint_max_output_tokens: 943718
+      pi_catalog_max_output_tokens: 131072
+      supports_vision: true
+      openhands_capability_overrides:
+        supports_reasoning_effort: true
+        supports_vision: true
+      openhands_inline_image_urls: true
+  - id: deepseek-v4-pro
+    family: deepseek
+    released_on: "2026-08-13"
+    preview_released_on: "2026-04-24"
+    availability: strict-openrouter-terminal-qualified
+    openrouter:
+      model_id: deepseek/deepseek-v4-pro-0813
+      provider_only: [deepseek]
+      endpoint_context_tokens: 1048576
+      endpoint_max_output_tokens: 384000
+      pi_catalog_max_output_tokens: 384000
+      supports_vision: false
+      availability: strict-openrouter-terminal-qualified
+      openhands_capability_overrides:
+        supports_reasoning_effort: true
+        supports_vision: false
+  - id: glm-5.3
+    family: zai
+    released_on: "2026-08-14"
+    availability: strict-openrouter-terminal-qualified
+    openrouter:
+      model_id: z-ai/glm-5.3
+      provider_only: [z-ai/fp8]
+      quantizations: [fp8]
+      endpoint_context_tokens: 1048576
+      endpoint_max_output_tokens: 131072
+      pi_catalog_max_output_tokens: 131072
+      supports_vision: false
+      openhands_capability_overrides:
+        supports_reasoning_effort: true
+        supports_vision: false
+
+providers:
+  zai:
+    api_key_env: ZAI_API_KEY
+    billing_source: zai
+    role: non-formal-reference-only
+  deepseek:
+    api_key_env: DEEPSEEK_API_KEY
+    billing_source: deepseek
+    role: non-formal-reference-only
+  moonshot:
+    api_key_env: KIMI_API_KEY
+    billing_source: moonshot
+    role: non-formal-reference-only
+  openrouter:
+    api_key_env: OPENROUTER_API_KEY
+    billing_source: openrouter
+    role: formal-primary
+
+token_sources: [provider, harness, runner]
+
+runners:
+  harbor:
+    source: https://github.com/harbor-framework/harbor
+    version: v0.22.0
+    released_at_utc: "2026-08-22T03:22:38.071577Z"
+    package: "harbor==0.22.0"
+    commit: 4407eb5
+    custom_agent_import_root: repository-root-resolved-at-launch
+  ale:
+    source: https://github.com/rdi-berkeley/agents-last-exam
+    ref: 0b6465b13c85b5a0a017d4c88bcf979a519a5e1f
+    commit: 0b6465b13c85b5a0a017d4c88bcf979a519a5e1f
+    committed_at_utc: "2026-08-25T22:20:05Z"
+    repository_path: vendor/agents-last-exam
+    version_policy: exact-commit-no-release-tag
+
+harnesses:
+  - id: pi
+    registry_schema: 1
+    registry_status: complete
+    study_models:
+      - claude-opus-5
+      - gpt-6-astra
+      - kimi-k3
+      - deepseek-v4-pro
+      - glm-5.3
+    source: https://github.com/earendil-works/pi
+    version: v0.84.4
+    released_at_utc: "2026-08-28T22:07:57.753Z"
+    install:
+      source: npm
+      package: "@earendil-works/pi-coding-agent@0.84.4"
+      upstream_tag_commit: b79e4cc834970cca69daebffab7df1da7d1e52c4
+      version_probe: pi --version
+      harbor_runtime: upstream-harbor-agent-install
+      ale_runtime: per-trial-user-prefix-with-npm-cache
+    runners:
+      harbor:
+        benchmarks: [terminal-bench-4, tua-bench]
+        kind: built-in
+        upstream_agent: pi
+        entry: pi --print --mode json --provider openrouter --model <exact-id> --thinking high
+      ale:
+        benchmarks: [ale-cli]
+        kind: custom-cli-deployer
+        deployer: ale_run.agents.study_pi.deployer.StudyPiDeployer
+        source: integrations/ale_agents/study_pi
+        entry: pi --print --mode json --provider openrouter --model <exact-id> --thinking high --offline --no-extensions --extension <ale-cua-extension>
+        current_source_sha256: 67b66940462dd1fb7d62ff264e445e30d5aaf04a315a9ef9764d5a1beaea4793
+        latest_text_b_source_sha256: 67b66940462dd1fb7d62ff264e445e30d5aaf04a315a9ef9764d5a1beaea4793
+        source_alignment: current-exact-text-b-qualified
+        current_extension:
+          source: integrations/ale_agents/study_pi/cua-extension.mjs
+          sha256: 5791fbf9b6d8c6943393a5893183f687fd303c3429bcb96a7c6f7da2771a25a2
+          tools: 14
+          coordinate_schema: array-number-minItems-2-maxItems-2-object-valued-items
+          schema_validation: node22-typebox-1.1.38-ajv-draft-2020-12-all-fourteen-tools
+          qualification: B-text
+    model_transport:
+      provider: openrouter
+      base_url: https://openrouter.ai/api/v1
+      api_mode: openai-chat-completions
+      classification: pi-native-openrouter-provider-no-protocol-translation
+      route_source: models.<model>.openrouter
+      route_body: providers.openrouter.modelOverrides.<model>.compat.openRouterRouting
+      allow_fallbacks: false
+      require_parameters: true
+      per_model_catalog:
+        claude-opus-5:
+          model_id: anthropic/claude-opus-5
+          provider_only: [anthropic]
+          quantizations: null
+          context_tokens: 1000000
+          max_output_tokens: 128000
+        gpt-6-astra:
+          model_id: openai/gpt-6-astra
+          provider_only: [openai]
+          quantizations: null
+          context_tokens: 1050000
+          max_output_tokens: 128000
+        kimi-k3:
+          model_id: moonshotai/kimi-k3
+          provider_only: [moonshotai/mxfp4]
+          quantizations: [mxfp4]
+          context_tokens: 1048576
+          max_output_tokens: 131072
+        deepseek-v4-pro:
+          model_id: deepseek/deepseek-v4-pro-0813
+          provider_only: [deepseek]
+          quantizations: null
+          context_tokens: 1048576
+          max_output_tokens: 384000
+        glm-5.3:
+          model_id: z-ai/glm-5.3
+          provider_only: [z-ai/fp8]
+          quantizations: [fp8]
+          context_tokens: 1048576
+          max_output_tokens: 131072
+    controls:
+      reasoning:
+        requested: high
+        source_layer: study-override
+        harness_field: thinking
+        cli: --thinking high
+        wire_status: reasoning-effort-high-verified-all-five-models
+        thinking_token_limit: null
+      context:
+        policy: pi-0.84.4-native-per-model-catalog
+        tokens_source: model_transport.per_model_catalog
+        compaction:
+          enabled: true
+          trigger: active-context-tokens-greater-than-context-window-minus-16384
+          reserve_tokens: 16384
+          keep_recent_tokens: 20000
+          model: same-active-model-and-thinking-level
+          qualification_observed_events: 0
+      output:
+        policy: pi-0.84.4-native-per-model-catalog
+        tokens_source: model_transport.per_model_catalog
+        wire_field: max_tokens
+        wire_status: verified-all-five-models
+      sampling:
+        temperature: null
+        top_p: null
+        seed: null
+        source_layer: provider-default-by-request-omission
+      loop:
+        max_turns: null
+        max_turns_source: pi-native-unset
+        dollar_budget: null
+        stuck_detection: none
+        stuck_detection_evidence: pi-v0.84.4-source-audit-no-native-detector
+      timeouts:
+        llm_request_seconds: 300
+        llm_request_semantics: http-header-and-body-idle-timeout
+        llm_request_source: pi-v0.84.4-DEFAULT_HTTP_IDLE_TIMEOUT_MS
+        task_deadline_source: controls.task_timeout
+        tool_timeout:
+          bash: optional-model-argument-with-no-default
+          cua_request_seconds: 30
+      retries:
+        pi_native_max_retries: 3
+        pi_native_backoff_seconds: [2, 4, 8]
+        provider_sdk_retries: 0
+        compatibility_proxy_retries: 0
+        harbor_outer_retries: 0
+      augmentation:
+        harbor_default_tools: [read, bash, edit, write]
+        harbor_skills: []
+        harbor_extensions: []
+        harbor_mcp: []
+        harbor_subagents: false
+        ale_latest_text_b_tools: [read, bash, edit, write]
+        ale_current_extra_tools: [key, key_down, key_up, type, hold_key, mouse_move, click, drag, mouse_down, mouse_up, scroll, wait, screenshot, cursor_position]
+        study_skills: []
+        memory: fresh-session-resume-disabled
+        extra_prompt: false
+    telemetry:
+      authoritative_cost: openrouter-per-generation-settled-usage
+      authoritative_route: openrouter-per-generation-model-provider-metadata
+      native_secondary: pi-stdout-jsonl-and-native-session-jsonl
+      runner_secondary: harbor-or-ale-normalized-trajectory
+      litellm: not-present
+      never_sum_duplicate_sources: true
+      token_fields: [input, cache-read, cache-write, output, reasoning]
+      known_limits:
+        - harbor-input-omits-pi-cache-write
+        - pi-native-cost-under-reports-kimi-and-deepseek-in-tua-evidence
+        - pi-native-cost-under-reports-kimi-by-14.93-percent-in-current-ale-evidence
+      required_native_artifacts:
+        - stdout-jsonl
+        - native-session-jsonl
+        - resolved-models.json
+    qualification:
+      source_of_truth: reports/provider-compatibility.md
+      terminal-bench-4:
+        level: B
+        scope: five-model-text-lifecycle
+        evidence:
+          - campaign: pilot-tb4-pi-glm-concurrency4-20260831-r2
+            manifest_sha256: be93bde7f717ebc8e994ed05af76a279285a3066607a4e7a6bb8df9dbd7ed634
+            audit_sha256: 95191605d0ec17280a43bc8a9cfd4e8db60551d76678defad3b8c90b0182e7d7
+          - campaign: pilot-tb4-pi-openrouter-readiness-20260831-r1
+            manifest_sha256: db1f9ae4a41340b5019abd3ec01aeaf73bd86fda2200335ee520dc59ca78122e
+            audit_sha256: 6b2ebc6cb1074913e98dfa5d4e7095ffa399ba687a51ec91dcbad828a18b1a97
+      tua-bench:
+        level: B
+        scope: five-model-text-lifecycle
+        evidence:
+          - campaign: pilot-tua-claude-pi-readiness-20260902-r1
+            manifest_sha256: 3e0350a2738791c6e7f69c8ec9db51bd1f1f091acb0414654edf40b78d1e3c97
+            audit_sha256: 91879641a49567a9a06504842f773ae08d49db5b13d4ae7341a84cfb6a54158f
+      ale-cli:
+        level: B
+        scope: five-model-text-lifecycle-current-fourteen-cua-tool-extension
+        current_source_sha256: 67b66940462dd1fb7d62ff264e445e30d5aaf04a315a9ef9764d5a1beaea4793
+        evidence:
+          - campaign: qualification-ale-pi-five-model-20260902-r5
+            models: [claude-opus-5, gpt-6-astra, kimi-k3, deepseek-v4-pro, glm-5.3]
+            manifest_sha256: 3c203b2ad05cfba45867e2869ba8bb13e4f46a861f9058fe1752a834714967cd
+            audit_sha256: 139fffb9713fe490b802471c4748fdc30dc284768f6c8c1497a0f1ccc73bbd09
+            deployer_source_sha256: 67b66940462dd1fb7d62ff264e445e30d5aaf04a315a9ef9764d5a1beaea4793
+        prior_text_b_evidence:
+          - campaign: pilot-ale-cli-cc-pi-readiness-20260902-r6
+            models: [glm-5.3]
+            manifest_sha256: 4a4b62709d984f47e4409863972c262ed20d1333f62c0bc93a918f522bf858c8
+            audit_sha256: 63641c27487e0568ff775c64071ba4e4af278e045479ee0b963ddca1996198e0
+            deployer_source_sha256: 534e05f1cc6e6f533717fb5c21f7db38940557066160b5477bcd020c5691851a
+          - campaign: pilot-ale-cli-pi-four-model-readiness-20260902-r1
+            models: [claude-opus-5, gpt-6-astra, kimi-k3, deepseek-v4-pro]
+            manifest_sha256: 9c8d5143d6ebfbc94bbb167839d2f16f0e97653aa3e17f9f7de6e5705454ea1a
+            audit_sha256: 2c8bdbac34934721889b93ca226ee3ff172dd9dde9a9637b1f5310594eddb830
+            deployer_source_sha256: 534e05f1cc6e6f533717fb5c21f7db38940557066160b5477bcd020c5691851a
+      not_qualified:
+        - multimodal-or-cua-execution
+        - compaction-recovery
+        - formal-run-concurrency-ceiling
+    registry_conflicts:
+      - field: model_transport.glm-5.3.modalities
+        final_tua_manifest: [text, image]
+        canonical_model_registry_and_compatibility_report: text-only
+        required_resolution: do-not-claim-glm-multimodal-support-until-provider-capability-and-wire-evidence-agree
+    unresolved_fields:
+      - pi-native-stuck-detection-policy-not-recorded-in-final-b-evidence
+      - pi-native-tool-timeout-not-recorded-as-a-numeric-value
+
+  - id: claude-code
+    registry_schema: 1
+    registry_status: complete
+    study_models: [claude-opus-5]
+    source: https://github.com/anthropics/claude-code
+    version: 2.1.251
+    released_at_utc: "2026-08-28T15:34:26.421Z"
+    install:
+      source: npm
+      package: "@anthropic-ai/claude-code@2.1.251"
+      version_probe: claude --version
+      harbor_runtime: upstream-harbor-agent-install
+      ale_runtime: upstream-ale-deployer-with-version-pinned-per-trial-install
+    runners:
+      harbor:
+        benchmarks: [terminal-bench-4, tua-bench]
+        kind: built-in-with-transparent-provider-injector
+        upstream_agent: claude-code
+        entry: claude --verbose --output-format=stream-json --permission-mode=bypassPermissions --effort high --print
+        provider_injector_contract: add-only-top-level-provider-object
+      ale:
+        benchmarks: [ale-cli]
+        kind: upstream-deployer-with-study-controls-and-transparent-provider-injector
+        deployer: ale_run.agents.study_claude_code.deployer.StudyClaudeCodeDeployer
+        source: integrations/ale_agents/study_claude_code
+        base: ale_run.agents.claude_code.deployer.ClaudeCodeDeployer
+        benchmark_mcp: ale-cua-only
+        current_source_sha256: eac4c6e16910602fe1d09d12940f5bcc80b60f5f27590e727d918fa9a5a4ef6e
+        latest_b_source_sha256: ae8f8e126b085870b477d851a2530ae5d87011ef0a542f21947197529939cf56
+        source_alignment: telemetry-only-drift-model-request-and-agent-loop-unchanged
+    model_transport:
+      provider: openrouter
+      base_url: https://openrouter.ai/api
+      endpoint: /api/v1/messages
+      api_mode: anthropic-messages
+      classification: provider-compatible-no-protocol-translation
+      harness_model_identity: anthropic/claude-opus-5[1m]
+      provider_model_id: anthropic/claude-opus-5
+      route_source: models.claude-opus-5.openrouter
+      route_body: transparent-injector-top-level-provider
+      provider_only: [anthropic]
+      quantizations: null
+      allow_fallbacks: false
+      require_parameters: true
+      injector_retries: 0
+      injector_semantic_change: [provider]
+    controls:
+      reasoning:
+        requested: high
+        source_layer: study-override
+        harness_fields: [reasoning_effort, CLAUDE_CODE_EFFORT_LEVEL]
+        cli: --effort high
+        wire_field: output_config.effort
+        wire_value: high
+        thinking: adaptive
+        max_thinking_tokens: null
+        wire_status: verified
+      context:
+        tokens: 1000000
+        source_layer: study-control-freezing-recognized-opus-1m-path
+        harness_identity: anthropic/claude-opus-5[1m]
+        harness_field: CLAUDE_CODE_MAX_CONTEXT_TOKENS
+        compaction:
+          policy: claude-code-native
+          window_tokens: 1000000
+          window_field: CLAUDE_CODE_AUTO_COMPACT_WINDOW
+          qualification_observed_events: 0
+      output:
+        tokens: 64000
+        source_layer: study-control-freezing-observed-recognized-opus-wire-default
+        harness_field: CLAUDE_CODE_MAX_OUTPUT_TOKENS
+        wire_field: max_tokens
+        wire_status: verified
+      sampling:
+        temperature: null
+        top_p: null
+        seed: null
+        source_layer: provider-default-by-request-omission
+      loop:
+        max_turns: null
+        max_turns_source: claude-code-native-unset
+        dollar_budget: null
+        permission_mode: bypassPermissions-inside-runner-sandbox
+      timeouts:
+        llm_stream: null
+        llm_stream_source: claude-code-native-default-not-numeric-in-b-evidence
+        injector_connect_seconds: 30
+        injector_total_seconds: null
+        injector_sock_read_seconds: null
+        task_deadline_source: controls.task_timeout
+      retries:
+        claude_code_native: upstream-default-audit-every-request
+        compatibility_injector_retries: 0
+        harbor_outer_retries: 0
+      augmentation:
+        harbor_default_tools: [Agent, Bash, CronCreate, CronDelete, CronList, Edit, EnterWorktree, ExitWorktree, ListAgents, NotebookEdit, Read, ReportFindings, ScheduleWakeup, SendMessage, Skill, TaskOutput, TaskStop, WebFetch, WebSearch, Workflow, Write]
+        harbor_tool_count: 21
+        harbor_skills: stock-catalog-available-no-study-injection
+        harbor_mcp: []
+        ale_stock_tool_count: 17
+        ale_cua_tool_count: 14
+        ale_disabled_tools: [EnterPlanMode, ExitPlanMode, EnterWorktree, ExitWorktree, AskUserQuestion, TaskOutput, TaskStop, RemoteTrigger]
+        ale_mcp: [cua]
+        subagents: native-agent-tool-available-all-aliases-route-to-same-opus-identity
+        memory: fresh-claude-config-session-resume-disabled
+        extra_prompt: false
+    telemetry:
+      authoritative_cost: openrouter-per-generation-settled-usage
+      authoritative_route: openrouter-per-generation-model-provider-metadata
+      native_secondary: claude-code-stream-json-native-session-and-model-usage
+      compatibility_secondary: provider-injector-structure-status-and-retry-log
+      runner_secondary: harbor-or-ale-normalized-trajectory
+      never_sum_duplicate_sources: true
+      token_fields: [input, cache-read, cache-write, output, reasoning]
+      known_limits:
+        - ale-r6-normalized-stream-usage-was-duplicated-use-provider-or-native-final-usage
+        - current-ale-telemetry-deduplication-has-no-paid-exact-source-hash-qualification
+      current_ale_telemetry_patch: deduplicate-repeated-stream-usage-and-retain-thinking-in-normalized-trajectory
+      required_native_artifacts:
+        - transcript.jsonl
+        - native-session-jsonl
+        - otel-wal-and-derived-telemetry
+        - provider-injector.jsonl
+    qualification:
+      source_of_truth: reports/provider-compatibility.md
+      terminal-bench-4:
+        level: B
+        scope: claude-text-lifecycle-and-image-block-canary
+        evidence:
+          - campaign: pilot-claude-code-final-readiness-20260901-r1
+            manifest_sha256: d09f904b419c84ab8116e97718d2e484efd85087eb69bc90a4d8a472745f77c1
+            audit_sha256: 397b9d61a0da470db3d7eef1c94dce1a17210fb97fa999ab93698344990e77f0
+      tua-bench:
+        level: B
+        scope: claude-text-lifecycle
+        evidence:
+          - campaign: pilot-tua-claude-pi-readiness-20260902-r1
+            manifest_sha256: 3e0350a2738791c6e7f69c8ec9db51bd1f1f091acb0414654edf40b78d1e3c97
+            audit_sha256: 91879641a49567a9a06504842f773ae08d49db5b13d4ae7341a84cfb6a54158f
+      ale-cli:
+        level: B
+        scope: claude-text-lifecycle-local-docker-subset
+        evidence:
+          - campaign: pilot-ale-cli-cc-pi-readiness-20260902-r6
+            manifest_sha256: 4a4b62709d984f47e4409863972c262ed20d1333f62c0bc93a918f522bf858c8
+            audit_sha256: 63641c27487e0568ff775c64071ba4e4af278e045479ee0b963ddca1996198e0
+            deployer_source_sha256: ae8f8e126b085870b477d851a2530ae5d87011ef0a542f21947197529939cf56
+        current_source_difference: telemetry-only-normalized-usage-deduplication-not-model-execution
+      not_qualified:
+        - current-ale-telemetry-patch-paid-source-hash
+        - tua-or-ale-multimodal-cua-execution
+        - ale-six-non-docker-tasks
+        - compaction-recovery
+        - formal-run-concurrency-ceiling
+    registry_conflicts:
+      - field: qualification.ale-cli.deployer-source
+        final_b_evidence: ae8f8e126b085870b477d851a2530ae5d87011ef0a542f21947197529939cf56
+        current_code: eac4c6e16910602fe1d09d12940f5bcc80b60f5f27590e727d918fa9a5a4ef6e
+        observed_difference: normalized-trajectory-usage-deduplication-and-thinking-retention-only
+        required_resolution: verify-current-normalized-telemetry-on-the-first-formal-ale-trial-before-analysis
+    unresolved_fields:
+      - claude-code-native-stream-timeout-not-recorded-as-a-numeric-value
+      - claude-code-native-retry-count-and-backoff-not-recorded-as-numeric-values
+      - claude-code-native-tool-timeout-not-recorded-as-a-numeric-value
+
+  - id: codex
+    registry_schema: 1
+    registry_status: draft
+    study_models:
+      - gpt-6-astra
+    source: https://github.com/openai/codex
+    version: 0.150.1
+    released_at_utc: "2026-08-27T02:01:46.851Z"
+    install:
+      source: npm
+      package: "@openai/codex"
+      version: 0.150.1
+      version_probe: codex --version
+      harbor_runtime:
+        terminal-bench-4: upstream-harbor-installed-agent-with-cross-process-install-lock
+        tua-bench: read-only-mount-of-exact-stock-npm-executable-bundle
+      tua_bundle_evidence:
+        binary_sha256: abf1bb1643a79f73aa78ee627e111e02d4f8c98f25813a0cf6ce277709664386
+        code_mode_host_sha256: b3d633427c8c75057fba11dad6051714d44886440305e86ba9d2c0366f4dd63b
+      ale_runtime: per-trial-stock-npm-install-with-version-verification
+    execution: headless
+    runners:
+      harbor:
+        benchmarks: [terminal-bench-4, tua-bench]
+        kind: built-in-with-install-lock-only-subclass
+        upstream_agent: codex
+        adapter: integrations.harbor_codex:NativeGPTCodex
+        adapter_sha256: 9d53a0e67efd3631f242a2ef06510a86ebcff0766812222b034ba2099cffc74c
+        entry: >-
+          codex exec --dangerously-bypass-approvals-and-sandbox
+          --skip-git-repo-check --model gpt-6-astra --json
+          --enable unified_exec -c model_reasoning_effort=high
+          -c model_reasoning_summary=none
+        sandbox_boundary: harbor-task-container
+      ale:
+        benchmarks: [ale-cli]
+        kind: custom-stock-codex-deployer-inheriting-upstream-cua-and-trajectory
+        deployer: ale_run.agents.study_codex.deployer.StudyCodexDeployer
+        source: integrations/ale_agents/study_codex
+        source_tree_sha256: 30eb1ec03d9d3901f9da651b30e49b210b64caae3b5138bf45c4fc62da83b422
+        benchmark_mcp: ale-cua-only
+        entry: >-
+          cwd=<pinned-ALE-checkout>
+          PYTHONPATH=<derived-source>:<pinned-ALE-checkout>
+          <repository>/.venv/bin/python -P -m ale_run run
+          <campaign>/configs/experiment.yaml --disable-resume
+    model_transport:
+      provider: openrouter
+      provider_base_url: https://openrouter.ai/api/v1
+      api_protocol: openai-responses
+      classification: provider-compatible-gateway-native-codex-gpt-pairing
+      requested_model: gpt-6-astra
+      forwarded_model: openai/gpt-6-astra
+      qualified_actual_model: openai/gpt-6-astra-20260903
+      provider_only: [openai]
+      quantization: null
+      allow_fallbacks: false
+      require_parameters: false
+      protocol_translation: false
+      route_change_fields: [model, provider]
+      response_changes: []
+      harness_base_urls:
+        harbor: http://host.docker.internal:4170/v1
+        ale: http://127.0.0.1:4170/v1
+      route_injectors:
+        harbor:
+          source: integrations/openrouter_body_injector.mjs
+          sha256: 617726fc07c07f3098e0222110c29b2ab4da3f3b361a5a04603e81dfa11fc49c
+        ale:
+          source: integrations/ale_agents/study_codex/injector.py
+          sha256: 053162e33437d21c5dbd3c24b5ea815d899e106bf61b1c38e8be639c28b7d7b5
+    controls:
+      reasoning:
+        requested: high
+        source_layer: study-override
+        harness_field: model_reasoning_effort
+        wire_field: reasoning.effort
+        wire_status: verified-tb4-tua-ale
+        context_policy: bundled-responses-lite-all_turns
+        summary: none-explicit-and-bundled-default
+      context:
+        bundled_tokens: 272000
+        bundled_max_configurable_tokens: 872000
+        effective_percent: 95
+        effective_tokens: 258400
+        auto_compact_trigger_tokens: 244800
+        source_layer: harness-bundled-model-metadata-and-native-derived-default
+        study_override: null
+      output:
+        configured_tokens: null
+        wire_field: max_output_tokens
+        wire_status: absent-on-all-final-b-requests
+        provider_advertised_max_tokens: 128000
+        source_layer: harness-native-no-study-override
+      sampling:
+        temperature: null
+        temperature_status: verified-absent-provider-default
+        top_p: null
+        top_p_status: unresolved-not-independently-captured-in-final-b-audits
+        top_k: null
+        top_k_status: unresolved-not-recorded-in-final-b-evidence
+        seed: null
+        seed_source: campaign-config-no-override
+      budget:
+        harness_usd_budget: null
+        model_token_budget_override: null
+        hard_dollar_stop: null
+        source_layer: harness-native-plus-per-campaign-operator-monitoring
+      loop:
+        max_turns: null
+        max_turns_source: codex-native-unset
+        stuck_detection: codex-native-unmodified
+      retries:
+        codex_request_max_retries: 4
+        codex_stream_max_retries: 5
+        compatibility_injector_retries: 0
+        harbor_outer_retries: 0
+        ale_whole_trial_retries: 0
+        source_layer: codex-native-except-runner-outer-retries-frozen-zero
+      timeouts:
+        codex_stream_seconds: null
+        codex_stream_status: unresolved-numeric-native-value-not-recorded-in-final-b-manifests
+        compatibility_injector_seconds: null
+        harbor_agent_override: null
+        terminal_bench_4:
+          agent_seconds: 28800
+          verifier_seconds: per-task-toml
+        tua_bench:
+          agent_seconds: 2400
+          verifier_seconds: 2400
+          environment_build_seconds: 2400
+          b_evidence_agent_setup_seconds: 720
+          formal_agent_setup_seconds: 720
+        ale_cli:
+          agent_seconds: per-task-vm-timeout
+          canary_agent_seconds: 7200
+          evaluation_seconds: 7200
+          task_session_attempts: 4
+          cua_command_attempts: 8
+      augmentation:
+        harbor_wire_tools: one-responses-lite-additional_tools-entry-code_mode_only
+        harbor_additional_tools_sha256: 438e0908e6d861709010b0a10f8c4745d5c64bf4da654b0b9605a3c891f05b63
+        observed_custom_tool: exec
+        harbor_mcp: []
+        ale_tools: stock-codex-plus-ale-runner-native-cua-mcp
+        ale_mcp: [cua]
+        ale_cua_qualified_execution: false
+        runner_injected_skills: []
+        bundled_system_skill_catalog: present-harness-default
+        observed_skill_invocations: 0
+        project_skills: false
+        extra_prompt: false
+        memory: fresh-isolated-codex-home-and-session
+        extra_memory: false
+        subagents: codex-bundled-default-no-study-override
+        observed_subagent_calls: 0
+      compaction:
+        policy: codex-native
+        event_logging: mandatory-primary-outcome
+        observed_events_in-final-b-pilots: 0
+        recovery_qualified: false
+    telemetry:
+      authoritative_cost: openrouter-per-generation-settled-total_cost
+      authoritative_route: openrouter-per-generation-model-provider-metadata
+      native_secondary: codex-token-events-native-jsonl-and-codex-json-output
+      runner_secondary: harbor-or-ale-normalized-trajectory
+      never_sum_duplicate_sources: true
+      token_fields:
+        - input
+        - cached-input
+        - cache-write-input
+        - output
+        - reasoning-output
+      known_cost_limits:
+        - harbor-codex-cost-is-exactly-two-times-provider-on-tb4-and-tua-b-evidence
+        - ale-normalized-cost-is-zero-on-ale-b-evidence
+      required_native_artifacts:
+        harbor:
+          - codex.txt
+          - native-session-jsonl
+          - trajectory.json
+          - injector-request-audit
+          - openrouter-generation-records
+        ale:
+          - native-codex-jsonl
+          - ale-otel-and-trajectory
+          - injector-request-audit
+          - openrouter-generation-records
+    qualification:
+      source_of_truth: reports/provider-compatibility.md
+      terminal-bench-4:
+        level: B
+        scope: gpt-only-single-task-text-lifecycle
+        evidence:
+          - campaign: pilot-tb4-codex-gpt-openai-pin-native-20260902-r5
+            manifest_sha256: c90e462ec6e0a7b917f333def56b8c25d6574659c96a4d2df42dd81c5447a9a8
+            audit_sha256: 5857c7a411e93c9cfdf6e62539b890aff8b13a6b31b4b4ff0b8a7aa420439c93
+            provider_generations_sha256: 14e0d37338717345efd70325f929ad8ee7ca48a3ac4071824ca751466c888c3f
+            wire_sha256: 3653af90979cb342a4b9adcdc99d7d6893d6c67fdbcdad1dd791fbb8ccbd0ddc
+      tua-bench:
+        level: B
+        scope: gpt-only-single-task-text-lifecycle
+        evidence:
+          - campaign: pilot-tua-codex-gpt-openai-pin-native-20260901-r5
+            manifest_sha256: f06e4ac5dbd69dd540cfc69148a8c886842cd0835a81aa01abe6ab2872d8168c
+            audit_sha256: e025ccabadc7c36202dec6128224b2fccefb948d974d20fd4acd87667fe08b5b
+            provider_generations_sha256: 84f6c9ab13df34cf433a330f1d7e1ceae19a6e6cc34371af35217364c7765fe7
+            wire_sha256: bd62f49bc47d431ea643e7f5c37fd6158677d2f23da529cda532612d70a64520
+      ale-cli:
+        level: B
+        scope: gpt-only-single-task-text-lifecycle-local-docker-subset
+        evidence:
+          - campaign: pilot-ale-cli-codex-gpt-readiness-20260902-r2
+            manifest_sha256: 844038cd75e9776dce5feefad395fb423dcd0412e172f53fe039a697b3d97dec
+            audit_sha256: 6387a5be0f13976d176ad4ec180110a7dabe3bc10245025a7a6aa839d9d1df9e
+            provider_generations_sha256: 2354abd80a30f251728a6b66d10babfcda86f003ac5cd3baa05ff7412ecec77f
+      not_qualified:
+        - non-gpt-models-or-cross-vendor-codex-paths
+        - multimodal-or-ale-cua-execution
+        - ale-six-non-docker-tasks
+        - long-context-compaction-recovery
+        - formal-run-concurrency-ceiling
+        - output-cap-recovery
+        - openai-direct-numerical-equivalence
+        - model-quality-or-full-benchmark-score
+    registry_conflicts:
+      - field: controls.context
+        final_b_evidence: bundled-272000-effective-258400-no-context-override
+        resolved_policy: harness-native-except-registered-harness-specific-controls
+        resolution: codex-keeps-bundled-metadata-and-receives-no-1m-override
+      - field: model_transport.parallel_tool_calls
+        final_b_evidence: injectors-change-only-model-and-provider
+        resolved_policy: compatibility-injector-does-not-remove-or-rewrite-this-field
+    unresolved_fields:
+      - sampling-top_p-and-top_k-wire-omission-not-independently-audited
+      - codex-native-stream-timeout-numeric-value-not-recorded
+      - tua-b-evidence-did-not-preserve-separate-native-session-or-runtime-image-id
+
+  - id: openhands
+    registry_schema: 1
+    registry_status: complete
+    study_models:
+      - claude-opus-5
+      - gpt-6-astra
+      - kimi-k3
+      - deepseek-v4-pro
+      - glm-5.3
+    source: https://github.com/OpenHands/software-agent-sdk
+    version: 1.44.1
+    released_at_utc: "2026-08-28T16:11:09.726561Z"
+    tools_released_at_utc: "2026-08-28T16:11:11.065548Z"
+    install:
+      source: pypi
+      packages:
+        openhands-sdk: 1.44.1
+        openhands-tools: 1.44.1
+      version_probe: python-importlib-metadata
+      harbor_runtime: upstream-harbor-installed-agent-venv
+      ale_runtime: per-trial-work-dir-venv-with-local-cache
+    runners:
+      harbor:
+        benchmarks: [terminal-bench-4, tua-bench]
+        kind: built-in-with-thin-control-overlay
+        upstream_agent: openhands-sdk
+        adapter: integrations.harbor:ControlledOpenHandsSDK
+      ale:
+        benchmarks: [ale-cli]
+        kind: custom-sdk-deployer
+        deployer: ale_run.agents.study_openhands.deployer.StudyOpenHandsDeployer
+        source: integrations/ale_agents/study_openhands
+        benchmark_mcp: ale-cua-only
+    model_transport:
+      provider: openrouter
+      base_url: https://openrouter.ai/api/v1
+      api_mode: auto
+      resolved_protocols:
+        chat: [claude-opus-5, glm-5.3, kimi-k3, deepseek-v4-pro]
+        responses: [gpt-6-astra]
+      route_source: models.<model>.openrouter
+      route_body: litellm_extra_body.provider
+      allow_fallbacks: false
+      require_parameters: true
+      reasoning_replay_patch:
+        id: openhands-1.44.1-openrouter-reasoning-roundtrip-v2
+        source: integrations/openhands_reasoning_details_patch.py
+        role: compatibility-only-preserve-structured-reasoning-across-tool-turns
+    controls:
+      reasoning:
+        requested: high
+        source_layer: study-override
+        harness_field: reasoning_effort
+        wire_status: verified-all-five-models
+      context:
+        tokens: 1000000
+        source_layer: study-override
+        harness_field: max_input_tokens
+        compaction: none
+        compaction_source: harbor-runner-condenser-default-frozen
+      output:
+        tokens: 128000
+        source_layer: compatibility-study-override
+        harness_field: max_output_tokens
+        rationale: replace-custom-base-url-16k-known-unset-unknown-asymmetry
+        wire_status: verified-all-five-models
+      sampling:
+        temperature: null
+        top_p: null
+        seed: null
+        source_layer: provider-default-by-request-omission
+      loop:
+        max_iterations: 500
+        max_iterations_source: sdk-default-frozen
+        stuck_detection: true
+        max_message_chars: 30000
+      retries:
+        sdk_num_retries: 5
+        sdk_retry_min_wait_seconds: 8
+        sdk_retry_max_wait_seconds: 64
+        sdk_retry_multiplier: 8.0
+        source_layer: sdk-default-frozen
+        compatibility_proxy_retries: 0
+        harbor_outer_retries: 0
+      augmentation:
+        default_tools: [terminal, file_editor, task_tracker, finish, think]
+        skills: false
+        memory: false
+        subagents: false
+        extra_prompt: false
+        harbor_mcp: []
+        ale_mcp: [cua]
+    telemetry:
+      authoritative_cost: openrouter-per-generation-settled-usage
+      authoritative_route: openrouter-per-generation-model-provider-metadata
+      native_secondary: openhands-events-and-completion-logs
+      runner_secondary: harbor-or-ale-normalized-trajectory
+      never_sum_duplicate_sources: true
+      known_cost_limit: openhands-reports-zero-for-gpt-responses-use-provider-cost
+      required_native_artifacts:
+        - resolved-llm-config.json
+        - openhands-events.json
+        - completions
+    qualification:
+      source_of_truth: reports/provider-compatibility.md
+      terminal-bench-4:
+        level: B
+        scope: five-model-text-lifecycle
+        evidence:
+          - campaign: pilot-tb4-openhands-four-model-b-fast-20260901-r1
+            manifest_sha256: 6f5012dafb9ba9423e26b808ccca4c88238c40d2031fb422fd758dd312107810
+            audit_sha256: fe72cbb0b0dccd10cbe13828a2cc2d9819a986a68beb8f02ed31c444b443dc85
+          - campaign: pilot-tb4-openhands-gpt-reasoning-roundtrip-20260901-r2
+            manifest_sha256: 929680a03f4f7b89d9d417ad4ef022225184a41bd02cab7b6f2135adc922f5ed
+            audit_sha256: c16dac1f5d088f0fe377f596132e5ffbb9ddab8a3562529d03003993c01ff8d6
+      tua-bench:
+        level: B
+        scope: five-model-text-lifecycle
+        evidence:
+          - campaign: pilot-tua-openhands-five-model-20260901-r2
+            manifest_sha256: 625bffa4687850e63365d2ae573cfc2be7c338271c7ef72ea689060d7a1d3083
+            audit_sha256: 5dd4638d418ce507db06b53a8b2d831f3a0f7525b6b257b1f0d6d6b53fb69fdc
+      ale-cli:
+        level: B
+        scope: five-model-text-lifecycle-local-docker-subset
+        evidence:
+          - campaign: pilot-ale-openhands-glm-20260902-r3
+            manifest_sha256: ad8632463203c6ad73966904e8764b86885b05dc2b3153d33284a288dc165d71
+            audit_sha256: e42adcb074bc72fb27b368c4a8e7a5f8f2a929cb01014a5c5af9906340f3a776
+          - campaign: pilot-ale-openhands-remaining-four-20260902-r1
+            manifest_sha256: 2f0e90365ad8bc0a768031ed52c9e8baf3de523edc7fbddb3a208ae6993e91b4
+            audit_sha256: 4b402b62a4b866a07bc302bd4c1ce7071b4b15dc3dbcbfcca5cc80bf46661658
+      not_qualified:
+        - multimodal-or-cua-execution
+        - ale-six-non-docker-tasks
+        - compaction-recovery
+        - formal-run-concurrency-ceiling
+
+  - id: deepseek-harness
+    registry_schema: 1
+    registry_status: complete
+    study_models:
+      - claude-opus-5
+      - gpt-6-astra
+      - kimi-k3
+      - deepseek-v4-pro
+      - glm-5.3
+    source: https://github.com/deepseek-ai/deepseek-harness
+    version: dsh-v0.1.1-rc.2
+    released_at_utc: "2026-08-21T12:42:19.422Z"
+    release_channel: prerelease-rc
+    upstream_commit: b150a551b8d465e31e418e1b2eaf5e79bbb7d28e
+    install:
+      source: npm
+      package: "@deepseek-ai/dsh"
+      version: 0.1.1-rc.2
+      spec: "@deepseek-ai/dsh@0.1.1-rc.2"
+      version_probe: dsh --version
+      pi_ai_dependency: "@earendil-works/pi-ai@0.82.1"
+      harbor_runtime: per-trial-global-npm-via-harbor-node-install
+      ale_runtime: per-trial-user-global-npm-with-local-cache
+      compatibility_patch:
+        file: integrations/patches/dsh-0.1.1-rc.2-headless-standard.patch
+        sha256: b072cb7582dcb1c6baa948f4a292d748eed75f349e878842c50791908a801622
+        role: mount-upstream-standard-preset-on-fresh-headless-session
+        changes_agent_loop: false
+        changes_preset: false
+    runners:
+      harbor:
+        benchmarks: [terminal-bench-4, tua-bench]
+        kind: custom-thin-installed-agent-adapter
+        adapter: integrations.harbor_deepseek:DeepSeekHarness
+        tua_config_builder: integrations.ale_agents.study_deepseek.config:build_harbor_dataset_config
+        entry: dsh --profile headless --patch <resolved> <task>
+        profile: headless-one-shot
+        agent_preset: upstream-standard
+        custom_agent_import_root: repository-root-resolved-at-launch
+      ale:
+        benchmarks: [ale-cli]
+        kind: custom-deployer
+        deployer: ale_run.agents.study_deepseek.deployer.StudyDeepSeekDeployer
+        source: integrations/ale_agents/study_deepseek
+        entry: dsh --profile headless --patch <resolved> <task>
+        profile: headless-one-shot
+        agent_preset: upstream-standard
+        benchmark_mcp: ale-cua-only
+        chokidar_use_polling: true
+        chokidar_reason: avoid-shared-host-inotify-quota-exhaustion
+    model_transport:
+      provider: openrouter
+      base_url: https://openrouter.ai/api/v1
+      api_mode: openai-chat-completions-with-sse
+      path_classification: provider-compatible-no-protocol-translation
+      dsh_adapter: pi-ai
+      route_source: models.<model>.openrouter
+      route_body: compatibility-injector-adds-only-provider-object
+      allow_fallbacks: false
+      require_parameters: true
+      strict_routes:
+        claude-opus-5:
+          model: anthropic/claude-opus-5
+          expected_actual_model: anthropic/claude-opus-5-20260723
+          expected_provider: Anthropic
+          provider_only: [anthropic]
+          quantization: unknown
+          input_modalities: [text, image]
+        gpt-6-astra:
+          model: openai/gpt-6-astra
+          expected_actual_model: openai/gpt-6-astra-20260903
+          expected_provider: OpenAI
+          provider_only: [openai]
+          quantization: unknown
+          input_modalities: [text, image]
+        kimi-k3:
+          model: moonshotai/kimi-k3
+          expected_actual_model: moonshotai/kimi-k3-20260715
+          expected_provider: Moonshot AI
+          provider_only: [moonshotai/mxfp4]
+          quantizations: [mxfp4]
+          input_modalities: [text, image]
+        deepseek-v4-pro:
+          model: deepseek/deepseek-v4-pro-0813
+          expected_actual_model: deepseek/deepseek-v4-pro-20260813
+          expected_provider: DeepSeek
+          provider_only: [deepseek]
+          quantization: unknown
+          input_modalities: [text]
+        glm-5.3:
+          model: z-ai/glm-5.3
+          expected_actual_model: z-ai/glm-5.3-20260816
+          expected_provider: Z.AI
+          provider_only: [z-ai/fp8]
+          quantizations: [fp8]
+          input_modalities: [text]
+      injector:
+        file: integrations/openrouter_body_injector.mjs
+        sha256: 617726fc07c07f3098e0222110c29b2ab4da3f3b361a5a04603e81dfa11fc49c
+        changed_request_fields: [provider]
+        protocol_translation: false
+        retries: 0
+        request_timeout: null
+      claude_prompt_cache:
+        retention: short
+        compat_cache_control_format: anthropic
+        source_layer: adapter
+        policy_source: pi-ai-native-short-cache-policy
+        wire_status: verified-tb4-and-ale
+    controls:
+      reasoning:
+        requested: high
+        source_layer: study-override
+        harness_fields:
+          provider: llm-pi-ai.config.providers.<route>.reasoning
+          model: llm-pi-ai.config.providers.<route>.models[].reasoningEfforts
+        wire_field: reasoning.effort
+        wire_status: verified-all-five-models
+        thinking_token_limit: null
+      context:
+        source_layer: adapter
+        value_source: frozen-endpoint-catalog
+        harness_field: llm-pi-ai.config.providers.<route>.models[].contextWindow
+        wire_field: null
+        wire_status: local-compaction-metadata-not-transmitted-as-request-field
+        per_model_tokens:
+          claude-opus-5: 1000000
+          gpt-6-astra: 1050000
+          kimi-k3: 1048576
+          deepseek-v4-pro: 1048576
+          glm-5.3: 1048576
+      output:
+        source_layer: adapter
+        value_source: frozen-endpoint-catalog
+        harness_field: llm-pi-ai.config.providers.<route>.models[].maxTokens
+        wire_field: max_tokens
+        policy: per-model-explicit-no-common-cap
+        per_model_tokens:
+          claude-opus-5: 128000
+          gpt-6-astra: 128000
+          kimi-k3: 943718
+          deepseek-v4-pro: 384000
+          glm-5.3: 131072
+        wire_status: verified-all-five-models
+      sampling:
+        temperature: null
+        top_p: null
+        seed: null
+        source_layer: provider-default-by-request-omission
+      loop:
+        max_turns: null
+        max_turns_source: upstream-standard-unset
+        budget_management: no-harness-dollar-budget
+      compaction:
+        source_layer: harness
+        implementation: upstream-standard-compaction-basic
+        auto: true
+        threshold_ratio: 0.8
+        retain_ratio: 0.16
+        summary_max_tokens: 8192
+        compaction_retries: 1
+        overflow_retries: 1
+        summary_model: same-routed-model
+      augmentation:
+        default_tool_count: 26
+        default_tool_schema_sha256_observed_tua: 47f13fa3219f011d45b2eed90241cd73ff67206df3eee49734721bc1eb6efab5
+        claude_short_cache_tool_schema_sha256_observed_tb4: 9c549d6e6ca930e8d24fe4291e84eb3fb1c7a4744ff45e2698b557f449a023da
+        ale_tool_count: 40
+        ale_tool_composition: 26-upstream-standard-plus-14-runner-native-cua
+        ale_claude_tool_schema_sha256_observed: 561855f7311b1829a9c602fbc41483d3f19bc730a4bf96e8511bd115597cfd60
+        ale_other_models_tool_schema_sha256_observed: 80f8e6a2e83d678f290e9282dd70ef8e98c38979b8cefe5e5f41d429778903b9
+        skills:
+          mechanism: upstream-present
+          user_or_project_loaded: false
+          include_user_root: false
+        memory: fresh-dsh-home-and-session-per-trial
+        resume: false
+        subagents: upstream-standard-native-no-override
+        dynamic_tool_note: gpt-subagent-use-can-add-upstream-report-tool-as-tool-27
+        extra_prompt: false
+        extra_plugins: false
+        harbor_mcp: []
+        ale_mcp: [cua]
+      permission_mode:
+        dsh_inner: danger-full-access
+        safety_boundary: benchmark-outer-sandbox
+        harbor_reason: nested-landlock-and-bubblewrap-unavailable-in-harbor-docker
+        status: compatibility-difference-requires-per-run-approval
+      auxiliary_calls:
+        session_title: retained-and-billed
+        title_max_tokens: 64
+        routing: same-routed-model
+      timeouts:
+        terminal-bench-4:
+          task_agent_seconds: 28800
+          harbor_agent_override: null
+          timeout_multiplier: 1.0
+        tua-bench:
+          task_agent_seconds: 2400
+          verifier_seconds: 2400
+          environment_build_seconds: 2400
+          qualification_agent_setup_seconds: 720
+          formal_agent_setup_seconds: 720
+          harbor_agent_override: null
+          timeout_multiplier: 1.0
+        ale-cli:
+          task_seconds: task-native-7200-14400-or-28800
+          qualification_task_seconds: 7200
+          evaluate_seconds: 7200
+          title_end_to_end_seconds: 60
+          cua_mcp_call_seconds: 60
+          lsp_seconds: 60
+          bash_foreground_default_seconds: 120
+          bash_model_selectable_cap_seconds: 600
+        dsh_stream_idle_seconds: 300
+        harbor_b_manifest_request_seconds: 600
+        ale_b_manifest_request_seconds: null
+        request_wall_status: unresolved-cross-runner-manifest-conflict
+      retries:
+        dsh_provider_main: up-to-5-with-500ms-to-10s-exponential-backoff-and-10-percent-jitter
+        dsh_title_exact_policy: unresolved-not-separately-recorded
+        compatibility_injector: 0
+        harbor_outer_trial: 0
+        ale_whole_trial: 0
+        ale_cua_transport_attempts: 8
+        ale_task_session_attempts: 4
+        dsh_source_layer: harness
+        runner_recovery_source_layer: runner
+    telemetry:
+      authoritative_cost: openrouter-per-generation-settled-usage
+      authoritative_route: openrouter-per-generation-model-provider-metadata
+      native_secondary: dsh-native-session-jsonl-main-and-subagents
+      runner_secondary: harbor-or-ale-normalized-trajectory
+      litellm: absent
+      never_sum_duplicate_sources: true
+      title_call_limit: provider-includes-title-dsh-native-session-does-not
+      reasoning_limit: dsh-native-usage-does-not-separate-provider-reasoning
+      cache_write_limit: harbor-normalized-input-can-omit-dsh-cache-write
+      required_native_artifacts:
+        - deepseek-harness/sessions/*.jsonl
+        - deepseek-harness/openrouter-injector.jsonl
+        - deepseek-harness/dsh.log
+    qualification:
+      source_of_truth: reports/provider-compatibility.md
+      terminal-bench-4:
+        level: B
+        scope: five-model-text-lifecycle
+        evidence:
+          - campaign: pilot-tb4-dsh-claude-cache-20260901-r1
+            models: [claude-opus-5]
+            manifest_sha256: c4328fd86f93313cd9ded1ca0accdd9e87e3cea8ea5a8224b480da64c4b47309
+            audit_sha256: fd2de864fc5519565e78dbfb4e3367b1da3acb0a39d726761f5bb3ae99b16a71
+          - campaign: pilot-tb4-dsh-glm-b-qualification-20260831-r1
+            models: [glm-5.3]
+            manifest_sha256: e1e9b2d4a7474f1e9379dc55aadbd31e9a94dc2b48935e1291d4285f6cefd4d0
+            audit_sha256: d57483d881d47838b8e4795accad5f5e9c9dd75962b34cd3f1f332d307512381
+          - campaign: pilot-tb4-dsh-openrouter-other-models-20260831-r1
+            models: [gpt-6-astra, kimi-k3]
+            manifest_sha256: 0d4775f83c24aba56572bc2c6b85f99f87700632e7e38567ec8a4aa05da0f1de
+            audit_sha256: f4c74ac58e0ec79f36ff9843d42b0853c9e35edac8a366ec2f71874989640b4a
+          - campaign: pilot-tb4-dsh-openrouter-deepseek-recheck-20260831-r1
+            models: [deepseek-v4-pro]
+            manifest_sha256: 6064f7911e3f0efbf87f184d4be9f87ef942ad36a1d2c63a294b812ebd9ff000
+            audit_sha256: f32cc63b4d6c3bed6d0ef72b5f7f5e7a557df1e2a95df63371d6220c1a2bd625
+      tua-bench:
+        level: B
+        scope: five-model-text-lifecycle
+        evidence:
+          - campaign: pilot-tua-dsh-five-model-qualification-20260902-r3
+            manifest_sha256: 83f9de73c77800a9abf4314519789075253c6ba87828daf0f6a1cef874054c5d
+            audit_sha256: 6a3670c3c8a41747416d4f6243fac9df48c63746b99a4a742b8bbce8a19a74c8
+      ale-cli:
+        level: B
+        scope: five-model-text-lifecycle-local-docker-subset
+        evidence:
+          - campaign: pilot-ale-dsh-five-model-qualification-20260902-r7
+            manifest_sha256: 722eacc6599425b0f11453587ef79b363d93253b366937e9526eb41c69d78cb9
+            audit_sha256: 13743a38caa3adff27b5aced20856819c146d1b837cb8f7429d6035e9165af36
+      not_qualified:
+        - multimodal-or-cua-execution
+        - ale-six-non-docker-tasks
+        - compaction-recovery
+        - output-cap-recovery
+        - formal-run-concurrency-ceiling
+        - independent-effective-quantization-observation
+    unresolved_fields:
+      - field: qualification.terminal-bench-4.current_adapter_source
+        current_sha256: 5db11414a7cc7834c9e4389a069fab74c9db9c07c8366fa7a2104ebed00826ea
+        evidence_conflict: terminal-bench-B-manifests-record-older-adapter-hashes-while-the-canonical-report-retains-B
+        action: compatibility-report-owner-must-confirm-whether-post-B-compatibility-only-drift-needs-exact-TB4-requalification
+      - field: qualification.ale-cli.current_overlay_source
+        current_sha256: 0ae7bcb9acceb6bb03731c177528fa403d9053808a76190d5f4176ad9b9cc13b
+        latest_b_sha256: d84c7716cc64d90aa06f69ff6011a8378ed3d3aef2b4e6de6a471acac8b6194f
+        evidence_conflict: only-EOF-blank-lines-changed-in-package-init-and-pyproject-while-config-deployer-patch-and-injector-hashes-match
+        action: freeze-current-derived-tree-hash-in-formal-manifest
+      - field: controls.timeouts.request_wall
+        evidence_conflict: harbor-B-manifest-records-600s-but-ALE-B-manifest-records-no-explicit-wall-timeout
+        action: resolve-from-pinned-upstream-runtime-before-formal-manifest
+      - field: controls.retries.dsh_title_exact_policy
+        evidence_gap: final-B-runs-observed-zero-title-retries-but-did-not-record-the-title-services-configured-retry-policy
+        action: resolve-from-pinned-upstream-source-before-formal-manifest
+      - field: controls.timeouts.tua-bench.formal_agent_setup_seconds
+        resolved_value: 720
+        resolution: study-wide-infrastructure-limit-agent-verifier-and-build-deadlines-unchanged
+
+benchmarks:
+  - id: ale-cli
+    runner: ale
+    tasks: 105
+    ref: 0b6465b13c85b5a0a017d4c88bcf979a519a5e1f
+    selected_tasks_path: selected_tasks/ale_cli.txt
+    selected_tasks_file_sha256: 915511f62dadea4c0037af270bf649d6b883a84b12201d41ba437b68896536a1
+    task_id_sha256: d2fc79c27c6142812af269d86acd7af774878391ae41b22c9d98b2fce49d215b
+    snapshot: cpu-free-ubuntu
+    task_timeouts_seconds:
+      "7200": 100
+      "14400": 3
+      "28800": 2
+      note: one task omits vm.timeout and resolves to ALE's 7200-second default
+    local_docker:
+      role: formal-study-score-set
+      tasks: 99
+      selected_tasks_path: selected_tasks/docker_support.txt
+      selected_tasks_file_sha256: f1bf3f38b9941c464fb61edc01d7163e0ab53eb730d7f1db6bf6694bc0451ff0
+      task_id_sha256: bea57c97cba480b72bdf4863673f7d6ccbd25a467fb0119beb8785ade3602502
+      image: docker.io/agentslastexam/ale-ubuntu22-docker@sha256:78ec11afeb0008ed8bc2b59cf9c90c05e63d1ac66b9d3e7cb0fada10695fca6f
+      image_digest: sha256:78ec11afeb0008ed8bc2b59cf9c90c05e63d1ac66b9d3e7cb0fada10695fca6f
+      excluded_tasks:
+        - business_finance/bpmn_category_governance_restructuring_l3
+        - business_finance/bpmn_supply_disruption_l3
+        - computing_math/k8s_migration_1
+        - engineering/openroad_sky130_ibex_pnr_signoff
+        - health_medicine/scene3_skullstrip_qc
+        - psychology_neuro/scene2_resample
+  - id: terminal-bench-4
+    runner: harbor
+    tasks: 66
+    dataset: terminal-bench/terminal-bench@4.0.0
+    ref: v4.0.0
+    commit: 452bf30
+    tasks_path: vendor/terminal-bench
+    task_id_sha256: fff6d209e08ba2442a40ce2af0fb706452c69441d4a9c21e9fd6b27e8a91f130
+    task_tree_sha256: 84f54ea3f76df34e4a3bdfd31bfb75702c45cbbe4d8f9971f7df6712d055799c
+  - id: tua-bench
+    runner: harbor
+    tasks: 120
+    source: https://github.com/facebookresearch/TUA-Bench
+    ref: 3497fd320abcafaf4797424192c891a593fd7964
+    commit: 3497fd320abcafaf4797424192c891a593fd7964
+    repository_path: vendor/tua-bench
+    tasks_path: vendor/tua-bench/tasks
+    task_id_sha256: 3eed93a667320de4563339dd7644b11d29b2bba3ffdd011baec4f05be608ad4a
+    task_tree_sha256: 04179f8784a1b791ca8c8cf178fc8d328c1b5f726913abf25c47b6fa90f7e62d
+    setup:
+      command: uv run --frozen setup-env
+      asset_targets: 73
+      asset_bytes: 84794112
+      asset_manifest_sha256: e043bf796f027ab758f976fc19ba1f199d709951720f62be0adb68046f45ed3a
+      upstream_harbor_package: harbor==0.6.3
+      study_harbor_package: harbor==0.22.0
+
+controls:
+  reasoning_effort: high
+  reasoning_mapping:
+    pi: thinking-high
+    claude-code: reasoning-effort-high
+    codex: reasoning-effort-high
+    openhands: reasoning-effort-high
+    deepseek-harness: reasoning-effort-high-in-selected-dsh-llm-adapter
+  reasoning_comparability: high-is-a-shared-label-not-a-shared-token-budget
+  context_window:
+    main: harness-native-except-registered-harness-specific-controls
+    claude_code_claude: 1000000-explicit-recognized-opus-study-control
+    openhands_openrouter: 1000000-explicit-compatibility-study-control
+    codex_gpt: bundled-272000-raw-258400-effective-no-context-override
+    pi_and_deepseek_harness: per-model-native-catalog-policy
+  output_budget:
+    main: harness-native-except-registered-harness-specific-controls
+    claude_code_claude: 64000-explicit-freeze-of-recognized-opus-wire-default
+    openhands_openrouter_exception: 128000-explicit-compatibility-study-override
+    claude_code_native_64000_32000_sensitivity: separate-approved-campaign-only
+  temperature: harness-default
+  extra_skills: false
+  extra_mcp: false
+  custom_prompt: false
+  retries:
+    harness_native: upstream-default-preserve-and-audit
+    harbor_max_retries: 0
+    rate_limit_rerun: new-immutable-trial-after-cooldown-and-new-approval
+    status: proposed-for-next-preflight
+  concurrency:
+    policy: freeze-per-campaign-without-standalone-parallel-qualification
+    value: pending-campaign-manifest
+    monitoring: record-429-native-retries-and-effective-request-concurrency
+  task_timeout:
+    policy: benchmark-native
+    harbor_agent_override: null
+    harbor_timeout_multiplier: 1.0
+    terminal_bench_4:
+      agent_seconds: 28800
+      verifier_seconds: per-task-toml
+    tua_bench:
+      agent_seconds: 2400
+      verifier_seconds: 2400
+      build_seconds: 2400
+      agent_setup_seconds: 720
+      agent_setup_source: study-wide-infrastructure-control
+      allow_internet: true
+      resource_policy: per-task-toml
+    ale_cli:
+      agent_policy: per-task-vm-timeout
+      runner_default_seconds: 7200
+      effective_counts:
+        "7200": 100
+        "14400": 3
+        "28800": 2
+      experiment_wall_time_override: null
+      evaluation_seconds: 7200
+      task_driver_transient_session_attempts: 4
+      task_driver_cua_command_attempts: 8
+
+approval:
+  require_before_every_paid_run: true
+  require_post_run_trajectory_audit: true

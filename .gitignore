@@ -1,0 +1,8 @@
+.env
+local.yaml
+.venv/
+__pycache__/
+vendor/
+runs/
+.cache/
+*.tgz

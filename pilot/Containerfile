@@ -1,0 +1,57 @@
+FROM node:22-bookworm-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3ebafdd95eaf7767a7e5 AS node
+
+FROM python:3.12-slim-bookworm@sha256:d50fb7611f86d04a3b0471b46d7557818d88983fc3136726336b2a4c657aa30b
+
+COPY --from=node /usr/local/ /usr/local/
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends \
+        ca-certificates \
+        curl \
+        git \
+        jq \
+        procps \
+        ripgrep \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN npm install --global \
+        @anthropic-ai/claude-code@2.1.251 \
+        @deepseek-ai/dsh@0.1.1-rc.2 \
+        @earendil-works/pi-coding-agent@0.84.4 \
+        @openai/codex@0.150.1 \
+    && npm cache clean --force
+
+RUN python -m venv /opt/openhands \
+    && /opt/openhands/bin/pip install --no-cache-dir \
+        "openhands-sdk==1.44.1" \
+        "openhands-tools==1.44.1"
+
+RUN python -m venv /opt/litellm \
+    && /opt/litellm/bin/pip install --no-cache-dir \
+        "litellm[proxy]==1.98.0"
+
+COPY pilot/patches/litellm-1.98.0-preserve-responses-reasoning.patch /tmp/litellm.patch
+RUN git apply --unsafe-paths \
+        --directory=/opt/litellm/lib/python3.12/site-packages \
+        /tmp/litellm.patch \
+    && rm /tmp/litellm.patch
+
+COPY pilot/patches/litellm-1.98.0-kimi-tool-replay.patch /tmp/litellm-kimi.patch
+RUN git apply --unsafe-paths \
+        --directory=/opt/litellm/lib/python3.12/site-packages \
+        /tmp/litellm-kimi.patch \
+    && rm /tmp/litellm-kimi.patch
+
+COPY pilot/patches/litellm-1.98.0-reasoning-stream-lifecycle.patch /tmp/litellm-reasoning-stream.patch
+RUN git apply --unsafe-paths \
+        --directory=/opt/litellm/lib/python3.12/site-packages \
+        /tmp/litellm-reasoning-stream.patch \
+    && rm /tmp/litellm-reasoning-stream.patch
+
+RUN useradd --create-home --uid 1000 runner \
+    && mkdir --parents /workspace \
+    && chown runner:runner /workspace
+
+USER runner
+ENV HOME=/home/runner
+WORKDIR /workspace

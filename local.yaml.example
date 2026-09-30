@@ -1,0 +1,13 @@
+# Machine-local settings only. Copy to local.yaml; do not commit local.yaml.
+schema_version: 1
+
+concurrency:
+  # Tasks running concurrently inside one benchmark × harness × model unit.
+  trials: 4
+  # Model/benchmark units running concurrently on this machine.
+  units: 1
+
+ale:
+  # The study's ALE score set is the frozen 99-task subset supported by the
+  # pinned local Docker sandbox. The other six upstream tasks are excluded.
+  mode: local-docker-99

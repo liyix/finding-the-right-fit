@@ -1,0 +1,41 @@
+diff --git a/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-headless/lib/index.js b/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-headless/lib/index.js
+index 75590b1..129780a 100644
+--- a/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-headless/lib/index.js
++++ b/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-headless/lib/index.js
+@@ -20,7 +20,8 @@ const name = "headless-runner";
+ const inject = [
+ 	"agentDefaultModel",
+ 	"agents",
+-	"sessions"
++	"sessions",
++	"agentPresets"
+ ];
+ const Config = z.object({ task: z.string().required() });
+ /** The process streams the runner writes to; tests substitute captures. */
+@@ -72,7 +73,9 @@ async function run(ctx, task, io) {
+ 	const agents = ctx.get("agents");
+ 	const defaultModel = ctx.get("agentDefaultModel");
+ 	const sessions = ctx.get("sessions");
+-	if (agents === void 0 || defaultModel === void 0 || sessions === void 0) return;
++	const presets = ctx.get("agentPresets");
++	if (agents === void 0 || defaultModel === void 0 || sessions === void 0 || presets === void 0) return;
+ 	const selection = defaultModel.currentSelection();
++	const preset = await presets.resolve("standard");
+ 	const { agent } = await agents.create({
+ 		sessionId: SessionId(`session-${randomUUID()}`),
+@@ -81,12 +84,13 @@ async function run(ctx, task, io) {
+-		meta: { cwd: process.cwd() },
++		meta: { cwd: process.cwd(), agentPreset: preset.id },
+ 		agentOptions: {
+ 			provider: selection.provider,
+ 			model: selection.model
+ 		},
+-		setup: (agentCtx) => {
++		setup: async (agentCtx) => {
+ 			installModelSelection(agentCtx, {
+ 				current: selection,
+ 				assembled: void 0
+ 			});
++			await presets.mount(agentCtx, preset.id);
+ 		}
+ 	});
