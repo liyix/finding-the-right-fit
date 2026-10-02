@@ -2,7 +2,7 @@
 <p align="center"><b>A Harness × Model evaluation suite for command-line agents</b></p>
 
 <p align="center">
-  <a href="https://arxiv.org/abs/XXXX.XXXXX"><img src="https://img.shields.io/badge/arXiv-paper-b31b1b.svg" alt="Paper"></a>
+  <a href="https://arxiv.org/abs/2610.00917"><img src="https://img.shields.io/badge/arXiv-2610.00917-b31b1b.svg" alt="Paper"></a>
   <a href="https://huggingface.co/datasets/yixuanli97/finding-the-right-fit"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Dataset-6%2C204%20trajectories-ffcc4d.svg" alt="Dataset"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/code-Apache%202.0-blue.svg" alt="License"></a>
 </p>
@@ -12,7 +12,7 @@ behind in another, and the best harness for a model changes with the task. This 
 lets you measure that directly: it runs **any of six agent harnesses with any
 OpenRouter model on three command-line agent benchmarks**, under one configuration, one
 scoring rule and one cost ledger. It is the code behind the paper
-[*Finding the Right Fit: Model–Harness Interactions across Agent Tasks*](https://arxiv.org/abs/XXXX.XXXXX).
+[*Finding the Right Fit: Model–Harness Interactions across Agent Tasks*](https://arxiv.org/abs/2610.00917).
 
 - **6 harnesses, ready to run.** OpenHands, DeepSeek Harness (DSH), PI, openJiuwen,
   Codex and Claude Code, each wired to Harbor (TUA-Bench, Terminal-Bench 4) and to the
@@ -185,9 +185,9 @@ If you use this code or the dataset, please cite:
   title   = {Finding the Right Fit: Model--Harness Interactions across Agent Tasks},
   author  = {Li, Yixuan and Zhou, Yiyun and Teng, Yao Long and Yang, Fuchao and Deng, Yanchen and
              Lyu, Zhiyi and Dong, Xuyu and Chen, Feng and An, Bo},
-  journal = {arXiv preprint arXiv:XXXX.XXXXX},
+  journal = {arXiv preprint arXiv:2610.00917},
   year    = {2026},
-  url     = {https://arxiv.org/abs/XXXX.XXXXX}
+  url     = {https://arxiv.org/abs/2610.00917}
 }
 ```
 
